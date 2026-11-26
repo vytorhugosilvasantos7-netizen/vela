@@ -15,6 +15,8 @@ python .\server.py
 
 Abra `http://127.0.0.1:8000`. O servidor lê a chave do arquivo local `.env`, que não deve ser compartilhado nem enviado ao Git; uma variável de ambiente já configurada tem prioridade. A chave é necessária apenas para buscar e analisar ações e forex; cripto usa endpoints públicos da Binance. O plano, as permissões por mercado e os limites da Twelve Data podem afetar a disponibilidade e a atualidade dos dados.
 
+O GitHub Pages serve apenas os arquivos estáticos e não executa o servidor Python nem o Ollama. Publicar a página lá, por si só, não disponibiliza as APIs nem a análise de imagens; o uso por clientes online exige uma hospedagem de backend e uma configuração apropriada de IA.
+
 Para encerrar o servidor, pressione `Ctrl+C`.
 
 ## Análise de imagem e notícias
