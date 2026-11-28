@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1016">
+  <meta name="description" content="Painel de análise técnica de cripto, ações e forex com dados de mercado atuais.">
+  <title>Vela — leitura de mercado</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./style.css?v=5">
+  <script src="./app.js?v=2" defer></script>
+  <script src="./image-analysis.js?v=4" defer></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/" aria-label="Vela, início">
+        <span class="brand-mark" aria-hidden="true"><span></span><span></span><span></span></span>
+        <span>vela<span class="brand-period">.</span></span>
+      </a>
+
+      <div class="sidebar-label">MENU</div>
+      <nav class="main-nav" aria-label="Navegação principal">
+        <a class="nav-link active" href="#painel" aria-current="page">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="5" rx="1.5"/><rect x="13" y="10" width="8" height="11" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/></svg>
+          Visão geral
+        </a>
+        <a class="nav-link" href="#analise">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5m0 14h16M7 15l4-4 3 2 6-7"/><path d="M16 6h4v4"/></svg>
+          Análise técnica
+        </a>
+      </nav>
+
+      <div class="sidebar-label watchlist-label">ACOMPANHANDO <span class="live-dot"></span></div>
+      <div class="watchlist" id="watchlist">
+        <button class="watch-item selected" data-market="crypto" data-symbol="BTCUSDT">
+          <span class="coin-icon bitcoin">₿</span>
+          <span class="watch-copy"><strong>Bitcoin</strong><small>BTC / USDT</small></span>
+          <span class="watch-arrow">↗</span>
+        </button>
+        <button class="watch-item" data-market="crypto" data-symbol="ETHUSDT">
+          <span class="coin-icon ethereum">◆</span>
+          <span class="watch-copy"><strong>Ethereum</strong><small>ETH / USDT</small></span>
+          <span class="watch-arrow">↗</span>
+        </button>
+        <button class="watch-item" data-market="stocks" data-symbol="AAPL">
+          <span class="coin-icon apple">A</span>
+          <span class="watch-copy"><strong>Apple</strong><small>AAPL · AÇÃO</small></span>
+          <span class="watch-arrow">↗</span>
+        </button>
+        <button class="watch-item" data-market="forex" data-symbol="EUR/USD">
+          <span class="coin-icon euro">€</span>
+          <span class="watch-copy"><strong>Euro / Dólar</strong><small>EUR / USD</small></span>
+          <span class="watch-arrow">↗</span>
+        </button>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="status-card">
+          <span class="status-icon">✳</span>
+          <div><strong>Fontes de dados</strong><small>Consultadas sob demanda</small></div>
+          <span class="status-indicator"></span>
+        </div>
+        <p>Dados fornecidos por Binance e Twelve Data.</p>
+      </div>
+    </aside>
+
+    <main id="painel" class="main-content">
+      <header class="topbar">
+        <div class="breadcrumb"><span>Mercado</span><span class="breadcrumb-slash">/</span><strong>Painel de análise</strong></div>
+        <div class="topbar-right">
+          <span class="market-status"><span class="live-dot"></span> DADOS SOB DEMANDA</span>
+          <span class="topbar-divider"></span>
+          <span class="date-label" id="current-date"></span>
+          <div class="avatar" aria-label="Perfil">V</div>
+        </div>
+      </header>
+
+      <section class="page-intro">
+        <div>
+          <p class="eyebrow"><span class="eyebrow-line"></span> LEITURA TÉCNICA, SEM RUÍDO</p>
+          <h1>Veja o mercado <span>com clareza.</span></h1>
+          <p class="intro-copy">Acompanhe tendências e indicadores de cripto, ações e moedas.</p>
+        </div>
+        <div class="updated-pill"><span class="live-dot"></span><span id="updated-at">Aguardando consulta</span></div>
+      </section>
+
+      <section id="analise" class="analysis-panel" aria-labelledby="analysis-heading">
+        <div class="panel-heading">
+          <div>
+            <h2 id="analysis-heading">Análise de ativo</h2>
+            <p>Escolha o mercado, o ativo e o período que deseja observar.</p>
+          </div>
+          <span class="secure-note"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5 8V6a5 5 0 0 1 10 0v2m-11 0h12v9H4z"/></svg> Somente leitura</span>
+        </div>
+        <form id="analysis-form" class="control-grid">
+          <label class="field market-field">
+            <span>Mercado</span>
+            <select id="market-select" name="market">
+              <option value="crypto">Criptomoedas</option>
+              <option value="stocks">Ações</option>
+              <option value="forex">Forex</option>
+            </select>
+          </label>
+          <label class="field symbol-field">
+            <span>Ativo ou símbolo</span>
+            <div class="symbol-input-wrap">
+              <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
+              <input id="symbol-input" name="symbol" value="BTCUSDT" autocomplete="off" placeholder="Ex.: BTCUSDT, AAPL, EUR/USD" required>
+              <div id="search-results" class="search-results" role="listbox" hidden></div>
+            </div>
+          </label>
+          <label class="field interval-field">
+            <span>Período</span>
+            <select id="interval-select" name="interval">
+              <option value="15m">15 minutos</option>
+              <option value="1h" selected>1 hora</option>
+              <option value="4h">4 horas</option>
+              <option value="1d">1 dia</option>
+              <option value="5m">5 minutos</option>
+              <option value="1m">1 minuto</option>
+            </select>
+          </label>
+          <button class="analyze-button" type="submit">
+            <span>Analisar ativo</span>
+            <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5"/></svg>
+          </button>
+        </form>
+        <p class="form-hint"><span class="hint-star">✳</span> Busque pelo nome ou símbolo. Os dados dependem da disponibilidade do provedor.</p>
+      </section>
+
+      <div id="error-message" class="error-message" role="alert" hidden></div>
+
+      <section class="summary-grid" aria-label="Resumo da análise">
+        <article class="summary-card asset-card">
+          <div class="card-topline"><span>ATIVO SELECIONADO</span><span class="tiny-icon">⌁</span></div>
+          <div class="asset-line">
+            <span id="asset-icon" class="asset-icon">₿</span>
+            <div><h3 id="asset-name">Bitcoin</h3><span id="asset-symbol" class="muted-label">BTC / USDT</span></div>
+          </div>
+          <div class="asset-market"><span class="live-dot"></span><span id="market-label">Criptomoeda</span><span id="market-badge" class="market-badge">SPOT</span></div>
+        </article>
+        <article class="summary-card price-card">
+          <div class="card-topline"><span>ÚLTIMO FECHAMENTO</span><span class="tiny-icon">↗</span></div>
+          <div id="latest-price" class="metric-value">—</div>
+          <div class="metric-foot"><span id="price-change" class="change-value">—</span><span>no candle anterior</span></div>
+        </article>
+        <article class="summary-card rsi-card">
+          <div class="card-topline"><span>RSI · 14</span><span class="tiny-icon">◉</span></div>
+          <div class="rsi-line"><span id="rsi-value" class="metric-value">—</span><span id="rsi-state" class="rsi-state">Aguardando dados</span></div>
+          <div class="rsi-track"><span id="rsi-marker"></span></div>
+          <div class="rsi-scale"><span>Sobrevendido</span><span>Sobrecomprado</span></div>
+        </article>
+      </section>
+
+      <section class="content-grid">
+        <article class="chart-panel">
+          <div class="chart-heading">
+            <div>
+              <div class="chart-title-row"><h2>Movimento do preço</h2><span class="interval-tag" id="chart-interval">1H</span></div>
+              <p>Histórico recente e média móvel exponencial de 20 períodos</p>
+            </div>
+            <div class="chart-legend"><span><i class="legend-price"></i> Fechamento</span><span><i class="legend-ema"></i> EMA 20</span></div>
+          </div>
+          <div class="chart-wrap" id="chart-wrap">
+            <canvas id="price-chart" aria-label="Gráfico de preço e EMA 20"></canvas>
+            <div class="chart-empty" id="chart-empty">
+              <span class="empty-chart-icon">⌁</span>
+              <strong>Seu gráfico começa aqui</strong>
+              <span>Consulte um ativo para visualizar o histórico de preços.</span>
+            </div>
+          </div>
+          <div class="chart-footer"><span id="chart-range">—</span><span><i class="legend-volume"></i> Volume negociado</span></div>
+        </article>
+
+        <article class="signal-panel">
+          <div class="signal-heading">
+            <div><h2>Sinal técnico</h2><p>Confluência dos indicadores</p></div>
+            <span class="signal-spark">✳</span>
+          </div>
+          <div id="signal-card" class="signal-card neutral">
+            <div class="signal-icon" id="signal-icon">⌁</div>
+            <div><span class="signal-caption">DIREÇÃO INDICATIVA</span><strong id="signal-direction">Aguardando</strong></div>
+          </div>
+          <div class="confluence-row"><span>Confluência técnica</span><strong id="confluence-value">—</strong></div>
+          <div class="confluence-track"><span id="confluence-bar"></span></div>
+          <p class="confluence-note">Não é probabilidade de acerto. É a concordância entre os indicadores selecionados.</p>
+          <div class="signal-divider"></div>
+          <h3 class="indicators-title">INDICADORES</h3>
+          <div class="indicator-row"><span><i class="indicator-dot trend-dot"></i>Tendência · EMA 20/50</span><strong id="trend-indicator">—</strong></div>
+          <div class="indicator-row"><span><i class="indicator-dot rsi-dot"></i>Momentum · RSI 14</span><strong id="rsi-indicator">—</strong></div>
+          <div class="indicator-row"><span><i class="indicator-dot macd-dot"></i>MACD · 12/26/9</span><strong id="macd-indicator">—</strong></div>
+        </article>
+      </section>
+
+      <section id="imagem" class="image-panel" aria-labelledby="image-heading">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-line"></span> GRÁFICO + CONTEXTO</p>
+            <h2 id="image-heading">Analise uma imagem do gráfico</h2>
+            <p>Receba uma leitura do gráfico, cenários e orientações sobre o que estudar, além de manchetes relacionadas ao ativo.</p>
+          </div>
+          <span class="local-badge" id="image-provider-badge">IA</span>
+        </div>
+        <form id="image-form">
+          <div class="image-controls">
+            <label class="field image-file-field">
+              <span>Imagem do gráfico · PNG, JPEG ou WebP, até 5 MB</span>
+              <input id="chart-image" type="file" accept="image/png,image/jpeg,image/webp" required>
+            </label>
+            <label class="field image-topic-field">
+              <span>Nome público do ativo para buscar notícias</span>
+              <input id="news-topic" type="text" placeholder="Ex.: Bitcoin, AAPL, EUR/USD" maxlength="60" required>
+            </label>
+            <button type="submit" class="analyze-button" id="image-submit">Analisar imagem</button>
+          </div>
+          <p class="image-privacy" id="image-privacy">Verificando como a imagem será processada...</p>
+          <label class="image-consent" id="image-consent-wrap" hidden>
+            <input id="image-consent" type="checkbox">
+            <span>Autorizo o envio desta imagem ao Google Gemini para análise.</span>
+          </label>
+        </form>
+        <div class="image-result-grid">
+          <div class="image-analysis-panel" aria-labelledby="image-result-heading">
+            <h3 id="image-result-heading">Leitura explicada</h3>
+            <div id="image-status" class="image-status" role="status" aria-live="polite">Escolha uma imagem e informe o ativo para iniciar a análise.</div>
+            <img id="image-preview" class="image-preview" alt="Prévia da imagem escolhida" hidden>
+            <div id="image-error" class="error-message" role="alert" hidden></div>
+            <div id="image-result" class="image-result" hidden>
+              <p class="image-result-warning"><strong>Atenção:</strong> a IA pode interpretar o gráfico incorretamente ou criar regras falsas. Confira a imagem e consulte fontes confiáveis antes de tomar decisões.</p>
+              <div id="image-explanation" class="image-explanation"></div>
+              <div class="study-guide">
+                <h3>Guia básico para estudar</h3>
+                <ul>
+                  <li><strong>Candles:</strong> cada vela mostra abertura, fechamento, máxima e mínima de um período.</li>
+                  <li><strong>Tendência:</strong> observe a sequência de topos e fundos; uma vela isolada não confirma a direção.</li>
+                  <li><strong>Suporte e resistência:</strong> são regiões onde o preço encontrou dificuldade para cair ou subir no passado, sem garantia de repetição.</li>
+                  <li><strong>Volume:</strong> mostra a quantidade negociada no período, quando o gráfico disponibiliza esse dado.</li>
+                  <li><strong>Indicadores:</strong> estude como foram calculados e o que medem; não suponha que estejam presentes se não aparecerem na imagem.</li>
+                </ul>
+              </div>
+              <p>Confira a imagem, os valores e as fontes: a IA pode se enganar ou não identificar detalhes. Cenários não são previsões nem recomendação de investimento.</p>
+            </div>
+          </div>
+          <aside class="news-panel" aria-labelledby="news-heading">
+            <h3 id="news-heading">Notícias relacionadas</h3>
+            <p>Manchetes dos últimos 7 dias nas edições Brasil e EUA do Google Notícias. Não é uma busca completa nem uma verificação dos artigos.</p>
+            <div id="news-status" class="news-status" role="status">Informe o ativo e escolha uma imagem para começar.</div>
+            <ul id="news-list" class="news-list"></ul>
+          </aside>
+        </div>
+      </section>
+
+      <footer class="disclaimer">
+        <span class="disclaimer-icon">i</span>
+        <p><strong>Informativo, não é recomendação de investimento.</strong> Esta leitura usa indicadores técnicos históricos e regras simples; não prevê o futuro nem considera fundamentos, notícias, custos ou seu perfil de risco. Dados podem ter atraso e sinais podem falhar.</p>
+      </footer>
+    </main>
+  </div>
+</body>
+</html>
