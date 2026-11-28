@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from datetime import datetime
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
@@ -10,7 +11,14 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qs, urlencode, urlparse
 from urllib.request import Request, urlopen
 
-from image_analysis import AnalysisError, MAX_IMAGE_BYTES, analyze_image, fetch_news, validate_topic
+from image_analysis import (
+    AnalysisError,
+    MAX_IMAGE_BYTES,
+    analyze_image,
+    fetch_news,
+    image_analysis_provider,
+    validate_topic,
+)
 
 
 ROOT = Path(__file__).resolve().parent
@@ -25,6 +33,9 @@ INTERVALS = {
 MARKETS = {"crypto", "stocks", "forex"}
 SYMBOL_PATTERN = re.compile(r"^[A-Za-z0-9./_-]{1,32}$")
 SYMBOL_CACHE = {"expires_at": 0.0, "symbols": []}
+GEMINI_DAILY_LIMIT = 30
+GEMINI_USAGE = {"day": "", "count": 0}
+GEMINI_USAGE_LOCK = threading.Lock()
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
@@ -48,14 +59,27 @@ def load_local_env():
         if not separator:
             logging.warning("Ignoring malformed .env entry at line %s", line_number)
             continue
-        if name.strip() != "TWELVE_DATA_API_KEY":
+        key = name.strip()
+        if key not in {"TWELVE_DATA_API_KEY", "GEMINI_API_KEY", "GEMINI_MODEL", "IMAGE_ANALYSIS_PROVIDER"}:
             continue
 
         value = value.strip()
         if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
             value = value[1:-1]
-        if value and not os.environ.get("TWELVE_DATA_API_KEY", "").strip():
-            os.environ["TWELVE_DATA_API_KEY"] = value
+        if value and not os.environ.get(key, "").strip():
+            os.environ[key] = value
+
+
+def reserve_gemini_request():
+    today = datetime.now().date().isoformat()
+    with GEMINI_USAGE_LOCK:
+        if GEMINI_USAGE["day"] != today:
+            GEMINI_USAGE["day"] = today
+            GEMINI_USAGE["count"] = 0
+        if GEMINI_USAGE["count"] >= GEMINI_DAILY_LIMIT:
+            return False
+        GEMINI_USAGE["count"] += 1
+        return True
 
 
 def request_json(url):
@@ -297,6 +321,9 @@ class TraderVelasHandler(SimpleHTTPRequestHandler):
         if parsed_url.path == "/api/news":
             self.handle_news(parse_qs(parsed_url.query))
             return
+        if parsed_url.path == "/api/config":
+            self.handle_config()
+            return
         if parsed_url.path.startswith("/api/"):
             self.send_json(404, {"error": "Rota não encontrada."})
             return
@@ -311,6 +338,15 @@ class TraderVelasHandler(SimpleHTTPRequestHandler):
             f"http://127.0.0.1:{self.server.server_port}",
             f"http://localhost:{self.server.server_port}",
         }
+        permitted_origins.update(
+            item.strip()
+            for item in os.environ.get("TRADER_VELAS_ALLOWED_ORIGINS", "").split(",")
+            if item.strip()
+        )
+        forwarded_proto = self.headers.get("X-Forwarded-Proto", "http").split(",", 1)[0].strip()
+        host = self.headers.get("Host", "").strip()
+        if forwarded_proto in {"http", "https"} and host and "\r" not in host and "\n" not in host:
+            permitted_origins.add(f"{forwarded_proto}://{host}")
         if origin not in permitted_origins:
             self.send_json(403, {"error": "A análise de imagem só pode ser usada pelo site local."})
             return
@@ -326,7 +362,16 @@ class TraderVelasHandler(SimpleHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length).decode("utf-8"))
             if not isinstance(payload, dict):
                 raise AnalysisError("Dados da análise inválidos.")
-            explanation = analyze_image(payload.get("image"), payload.get("topic"), payload.get("headlines"))
+            provider = image_analysis_provider()
+            if provider == "gemini" and not reserve_gemini_request():
+                self.send_json(429, {"error": "O limite diário de análises gratuitas deste site foi atingido. Tente novamente amanhã."})
+                return
+            explanation = analyze_image(
+                payload.get("image"),
+                payload.get("topic"),
+                payload.get("headlines"),
+                consent=payload.get("consent", False),
+            )
         except (UnicodeDecodeError, json.JSONDecodeError):
             self.send_json(400, {"error": "Dados da análise inválidos."})
             return
@@ -334,6 +379,17 @@ class TraderVelasHandler(SimpleHTTPRequestHandler):
             self.send_json(400, {"error": str(error)})
             return
         self.send_json(200, {"explanation": explanation})
+
+    def handle_config(self):
+        try:
+            provider = image_analysis_provider()
+        except AnalysisError as error:
+            self.send_json(503, {"error": str(error)})
+            return
+        self.send_json(200, {
+            "imageAnalysisProvider": provider,
+            "imageConsentRequired": provider == "gemini",
+        })
 
     def handle_news(self, query):
         try:
@@ -400,8 +456,9 @@ class TraderVelasHandler(SimpleHTTPRequestHandler):
 
 def main():
     load_local_env()
-    host = os.environ.get("TRADER_VELAS_HOST", "127.0.0.1")
-    port = int(os.environ.get("TRADER_VELAS_PORT", "8000"))
+    default_host = "0.0.0.0" if os.environ.get("PORT") else "127.0.0.1"
+    host = os.environ.get("TRADER_VELAS_HOST", default_host)
+    port = int(os.environ.get("PORT", os.environ.get("TRADER_VELAS_PORT", "8000")))
     server = ThreadingHTTPServer((host, port), TraderVelasHandler)
     logging.info("Trader Velas disponível em http://%s:%s", host, port)
     try:
